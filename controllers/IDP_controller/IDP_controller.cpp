@@ -17,8 +17,12 @@ Robot *robot = new Robot();
 // get the time step of the current world.
 int timeStep = (int)robot->getBasicTimeStep();
 
-LightSensor *light_sensor = robot->getLightSensor("TEPT4400");
+DistanceSensor *ds[3];
+char dsNames[3][40] = {"ds_right","ds_left","Sharp's IR sensor GP2Y0A02YK0F"};
+
+/*LightSensor *light_sensor = robot->getLightSensor("TEPT4400");
 light_sensor->enable(TIME_STEP);
+*/
 
 void move_forwards() {
    // get the motor devices
@@ -96,8 +100,6 @@ void scanOnSpot(){
 int main(int argc, char **argv) {
   //Initialising US and IR sensors
 //Initialise array of pointers of type DistanceSensor device tag
-  DistanceSensor *ds[3];
-  char dsNames[3][40] = {"ds_right","ds_left","Sharp's IR sensor GP2Y0A02YK0F"};
   
 //Retrieving device tags and enabling with refresh time step
   for(int i = 0; i < 3; i++){
@@ -108,7 +110,7 @@ int main(int argc, char **argv) {
  while (robot->step(TIME_STEP) != -1){
     
     // Main (algorithmic loop)
-    scanOnSpot();
+    move_forwards();
     
  };
     
