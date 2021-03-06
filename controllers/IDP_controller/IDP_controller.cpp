@@ -3,6 +3,8 @@
 
 // Added a new include file
 #include <webots/Motor.hpp>
+#include <webots/LightSensor.hpp>
+#include <webots/DistanceSensor.hpp>
 
 #define TIME_STEP 64
 #define MAX_SPEED 10
@@ -10,21 +12,13 @@
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
 
-//Initialising instance of Robot
 Robot *robot = new Robot();
 
-//Initialising US and IR sensors
-DistanceSensor *ds[3];
-char dsNames[3][40] = {"us_right","us_left","Sharp's IR sensor GP2Y0A02YK0F")};
+// get the time step of the current world.
+int timeStep = (int)robot->getBasicTimeStep();
 
- //Retrieving device tags and enabling with refresh time step
-for(int i = 0; i < 3; i++){
-   ds[i] = robot->getDistanceSensor(dsNames[i]);
-   ds[i]->enable(TIME_STEP); //TIME_STEP defines rate at which sensor is refreshed
-}
-
-LightSensor *light = robot->getLightSensor("TEPT4400");
-light->enable(TIME_STEP);
+LightSensor *light_sensor = robot->getLightSensor("TEPT4400");
+light_sensor->enable(TIME_STEP);
 
 void move_forwards() {
    // get the motor devices
@@ -93,13 +87,23 @@ void close_arms() {
 
 //Reads distance sensors
 void scanOnSpot(){
-    double psValues[3];
+    double dsValues[3];
     for (int i = 0; i < 3 ; i++)
-    psValues[i] = ps[i]->getValue();
+    dsValues[i] = ds[i]->getValue();
     rotate_ACW();
 }
 
 int main(int argc, char **argv) {
+  //Initialising US and IR sensors
+//Initialise array of pointers of type DistanceSensor device tag
+  DistanceSensor *ds[3];
+  char dsNames[3][40] = {"ds_right","ds_left","Sharp's IR sensor GP2Y0A02YK0F"};
+  
+//Retrieving device tags and enabling with refresh time step
+  for(int i = 0; i < 3; i++){
+    ds[i] = robot->getDistanceSensor(dsNames[i]);
+    ds[i]->enable(TIME_STEP); //TIME_STEP defines rate at which sensor is refreshed
+  }
 
  while (robot->step(TIME_STEP) != -1){
     
@@ -111,4 +115,3 @@ int main(int argc, char **argv) {
  delete robot;
  return 0;
  }
-}
