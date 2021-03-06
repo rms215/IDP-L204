@@ -90,20 +90,23 @@ void close_arms() {
    leftMotor->setPosition(0.0);
    rightMotor->setPosition(0.0);
 }
-int main(int argc, char **argv) {
 
-
-
- while (robot->step(TIME_STEP) != -1){
- 
-    // Read the sensors:
+//Reads distance sensors
+void scanOnSpot(){
     double psValues[3];
     for (int i = 0; i < 3 ; i++)
     psValues[i] = ps[i]->getValue();
+    rotate_ACW();
+}
+
+int main(int argc, char **argv) {
+
+ while (robot->step(TIME_STEP) != -1){
     
+    // Main (algorithmic loop)
+    scanOnSpot();
     
-    
-    };
+ };
     
  delete robot;
  return 0;
