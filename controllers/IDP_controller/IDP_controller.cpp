@@ -1,10 +1,10 @@
 // File:          IDP_controller.cpp
 #include <webots/Robot.hpp>
-
-// Added a new include file
+#include <webots/GPS.hpp>
 #include <webots/Motor.hpp>
-#include <webots/LightSensor.hpp>
 #include <webots/DistanceSensor.hpp>
+#include <webots/Compass.hpp>
+#include <webots/LightSensor.hpp>
 
 #define TIME_STEP 64
 #define MAX_SPEED 10
@@ -46,7 +46,7 @@ void move_backwards() {
    rightMotor->setVelocity(-0.5 * MAX_SPEED);
 }
 
-void move_backwards_position(x)
+/*float move_backwards_position(x) {
 // get the motor devices
    Motor *leftMotor = robot->getMotor("Wheel_L");
    Motor *rightMotor = robot->getMotor("Wheel_R");
@@ -57,7 +57,7 @@ void move_backwards_position(x)
    // set up the motor speeds at 50% of the MAX_SPEED.
    leftMotor->setVelocity(-0.5 * MAX_SPEED);
    rightMotor->setVelocity(-0.5 * MAX_SPEED);
-}
+}*/
 void rotate_CW() {
    // get the motor devices
    Motor *leftMotor = robot->getMotor("Wheel_L");
@@ -100,13 +100,13 @@ void close_arms() {
 }
 
 //Reads distance sensors
-void scanOnSpot(){
+/*void scanOnSpot(){
     for (int i = 0; i < 4 ; i++){
     double dsValues[4];
     dsValues[i] = ds[i]->getValue();
     rotate_ACW();
     }
-}
+}*/
 
 int main(int argc, char **argv) {
 
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
   // write code to reccord initial orientation
   double initial_position[3] = {0.0, 1.0, 2.0};
   int i = 0;
-  if (i = 0){
+  if (i == 0){
     initial_position[0] = gps->getValues()[0];
     initial_position[1] = gps->getValues()[1];
     initial_position[2] = gps->getValues()[2];
