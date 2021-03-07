@@ -328,7 +328,7 @@ Robot {
         4 38000 0	
       ]	
       type "sonar"	
-      numberOfRays 5	
+      numberOfRays 10	
       aperture 0.5236	
     }	
     DistanceSensor {	
@@ -353,7 +353,7 @@ Robot {
         4 38000 0	
       ]	
       type "sonar"	
-      numberOfRays 5	
+      numberOfRays 10	
       aperture 0.5236	
     }	
     LightSensor {	
