@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
   // write code to reccord initial orientation
   double initial_position[3] = {0.0, 1.0, 2.0};
   int i = 0;
-  if (robot->step(TIME_STEP) == 64){
+  if (i = 0){
     initial_position[0] = gps->getValues()[0];
     initial_position[1] = gps->getValues()[1];
     initial_position[2] = gps->getValues()[2];
