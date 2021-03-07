@@ -1,12 +1,15 @@
 // File:          IDP_controller.cpp
 #include <webots/Robot.hpp>
-
-// Added a new include file
+#include <webots/GPS.hpp>
 #include <webots/Motor.hpp>
-#include <webots/LightSensor.hpp>
 #include <webots/DistanceSensor.hpp>
+<<<<<<< HEAD
 #include <webots/GPS.hpp>
 #include <webots/Compass.hpp>
+=======
+#include <webots/Compass.hpp>
+#include <webots/LightSensor.hpp>
+>>>>>>> bba3d423cdfd2278b6d4657ac49438e97e80f9e0
 
 #define TIME_STEP 64
 #define MAX_SPEED 10
@@ -58,12 +61,27 @@ void move_backwards() {
    rightMotor->setVelocity(-0.5 * MAX_SPEED);
 }
 
+<<<<<<< HEAD
 void move_position(double x){
    // set the target position of the motors
    leftMotor->setPosition(x);
    rightMotor->setPosition(x);
 }
 
+=======
+/*float move_backwards_position(x) {
+// get the motor devices
+   Motor *leftMotor = robot->getMotor("Wheel_L");
+   Motor *rightMotor = robot->getMotor("Wheel_R");
+   // set the target position of the motors
+   leftMotor->setPosition(x);
+   rightMotor->setPosition(x);
+
+   // set up the motor speeds at 50% of the MAX_SPEED.
+   leftMotor->setVelocity(-0.5 * MAX_SPEED);
+   rightMotor->setVelocity(-0.5 * MAX_SPEED);
+}*/
+>>>>>>> bba3d423cdfd2278b6d4657ac49438e97e80f9e0
 void rotate_CW() {
    // set the target position of the motors
    leftMotor->setPosition(INFINITY);
@@ -93,16 +111,22 @@ void close_arms() {
    rightMotor->setPosition(0.0);
 }
 
+<<<<<<< HEAD
 void scanOnSpot(){
+=======
+//Reads distance sensors
+/*void scanOnSpot(){
+>>>>>>> bba3d423cdfd2278b6d4657ac49438e97e80f9e0
     for (int i = 0; i < 4 ; i++){
     double dsValues[4];
     dsValues[i] = ds[i]->getValue();
     rotate_ACW();
     }
-}
+}*/
 
 int main(int argc, char **argv) {
 
+<<<<<<< HEAD
     // write code to reccord initial orientation
     double initial_position[3];
     int i = 0;
@@ -112,6 +136,24 @@ int main(int argc, char **argv) {
       initial_position[2] = gps->getValues()[2];
      //const double initial_north = compass->getValues();
     };
+=======
+  //Initialising GPS
+  GPS *gps = robot->getGPS("gps");
+  gps->enable(TIME_STEP);
+  //start_pos_green = []   //reccord initial position
+  
+  Compass *compass = robot->getCompass("compass");
+  compass->enable(TIME_STEP);
+  // write code to reccord initial orientation
+  double initial_position[3] = {0.0, 1.0, 2.0};
+  int i = 0;
+  if (i == 0){
+    initial_position[0] = gps->getValues()[0];
+    initial_position[1] = gps->getValues()[1];
+    initial_position[2] = gps->getValues()[2];
+   //const double initial_north = compass->getValues();
+  };
+>>>>>>> bba3d423cdfd2278b6d4657ac49438e97e80f9e0
   
 //Retrieving device tags and enabling with refresh time step
     for(int i = 0; i < 4; i++){
