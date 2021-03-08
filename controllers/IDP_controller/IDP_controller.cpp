@@ -29,7 +29,11 @@ char dsNames[4][20] = {"us_right","us_left","ir_left","ir_right"};
   
 /*LightSensor *light_sensor = robot->getLightSensor("TEPT4400");
 light_sensor->enable(TIME_STEP);
- */
+*/
+
+//Initiate vector to store sensor readings
+std::vector<std::vector<double>> dsValueScan(1000,std::vector<double> (4,0));
+
 void rotate(double theta){
 
 // set the target position of the motors
@@ -99,11 +103,11 @@ void close_arms() {
 }
 
 std::vector<double> getdsValues(){
+    std::vector<double> dsValues(4);
     for (int i = 0; i < 4; i++){
-      std::vector<double> dsValues(4);
       dsValues[i] = ds[i]->getValue();
-      return dsValues;
     }
+    return dsValues;
 }
 
 double get_bearing_in_degrees(const double *north) {
@@ -137,8 +141,7 @@ double get_bearing_in_degrees(const double *north) {
 }
 */
 
-double blocksfound [8];
-std::vector<std::vector<double>> dsValueScan(500,std::vector<double> (4,0));
+std::vector<double> findBlocks(std::vector<double> &dsValueScan);
    
 int main(int argc, char **argv) {
     
@@ -154,20 +157,26 @@ int main(int argc, char **argv) {
     
    int j = 0;
    
-   while (robot->step(TIME_STEP) != -1 && j <100){
+   while (robot->step(TIME_STEP) != -1){
    
       /*double initial_bearing = get_bearing_in_degrees(north);
       rotate(18.2);
       double final_bearing = get_bearing_in_degrees(north);*/
       
-      dsValueScan[j]=getdsValues();
+      std::vector<double> Values = getdsValues();
       j++;
       rotate_ACW();
       
-      for(int i=0; i<dsValueScan[j].size(); ++i){
-        std::cout << dsValueScan[j][i] << ' ';
-      }
-    
+      for(int i = 0; i<4; i++){
+        std::cout << Values[i]<< ",";
+       }
+       
+      std::cout << "\n";
+      
+      if(j==100){
+        break;
+       }
+     
       /*std::cout << initial_bearing << "," << final_bearing << "\n";
       
       double initial_position[3];
@@ -190,4 +199,4 @@ int main(int argc, char **argv) {
       
    delete robot;
    return 0;
-   }
+ }

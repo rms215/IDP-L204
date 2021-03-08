@@ -139,6 +139,5 @@ target {
   colour 0 1 0
   name "target(5)"
 }
-Robot4 {
-  translation 0 0.06 -0.42
+robotmain {
 }
