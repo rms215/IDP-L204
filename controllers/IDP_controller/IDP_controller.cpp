@@ -24,15 +24,15 @@ GPS *gps = robot->getGPS("gps");
 Compass *compass = robot->getCompass("compass");
 
 //Initialsing US and IR sensors
-DistanceSensor *ds[4];
-char dsNames[4][20] = {"us_right","us_left","ir_left","ir_right"};
+DistanceSensor *ds[3];
+char dsNames[3][20] = {"us_right","us_left","ir"};
   
 /*LightSensor *light_sensor = robot->getLightSensor("TEPT4400");
 light_sensor->enable(TIME_STEP);
 */
 
 //Initiate vector to store sensor readings
-std::vector<std::vector<double>> dsValueScan;
+std::vector<std::vector<double>> sensorValueScan;
 
 void rotate(double theta){
 
@@ -102,15 +102,74 @@ void close_arms() {
    rightMotor->setPosition(0.0);
 }
 
-std::vector<double> getdsValues(){
-    std::vector<double> dsValues(4);
-    for (int i = 0; i < 4; i++){
-      dsValues[i]=ds[i]->getValue();
+//Function to get sensor values for one time step, in distance units
+std::vector<double> getSensorValues(double (*get_bearing_in_degrees)()){
+    //Creating vector to store one row of sensor values for one time step
+    std::vector<double> sensorValues(4);
+    
+    //Input distance sensor values as distance (involves dividing through by 57)
+    for (int i = 0; i < 2; i++){
+      sensorValues[i]=(ds[i]->getValue())/5700;
     }
-    return dsValues;
+    
+    //Get IR sensor lookup table
+    const double *lookUpTable = ds[2]->getLookupTable();
+    int lookUpTableSize = ds[2]->getLookupTableSize();
+    
+    
+    //Input IR sensor values as distance (involves interpolation)
+ 
+    double distanceActual = 0;
+    double lookUpValue=ds[2]->getValue();
+    for(int j = 0; j < lookUpTableSize; j++){
+      double voltageRef = lookUpTable[3*j+1];
+      double distanceRef = lookUpTable[3*j];
+      if(lookUpValue > voltageRef){
+        distanceActual = lookUpTable[3*(j-1)]+(distanceRef-lookUpTable[3*(j-1)])*(lookUpValue-voltageRef);
+        break;
+      }
+    }
+    sensorValues[2] = distanceActual;
+    
+    //Last value of size 5 vector is bearing
+    double bearing = get_bearing_in_degrees();
+    sensorValues[3] = bearing;
+    return sensorValues;
 }
 
-double get_bearing_in_degrees(const double *north) {
+//Clean sensorValueScan to get block bearings
+std::vector<double> getBlockBearings(){
+
+      int lookUpTableSize = ds[2]->getLookupTableSize();
+      std::vector<double> blockBearings;
+      
+      //Calculating average returned IR sensor value
+      int numCounter = 0;
+      double sumDistance = 0;
+      for(int j = 0; j<lookUpTableSize;j++){
+        sumDistance += sensorValueScan[j][2];
+        if(sensorValueScan[j][2]!=0){
+          numCounter++;
+        }
+      }
+      double avgDistance = sumDistance/numCounter;
+      
+      double x;
+      //Conditional logic to extract bearings
+      for(int j = 2; j<lookUpTableSize;j++){
+        x = sensorValueScan[j][2];
+        if( (x - sensorValueScan[j-1][2]) > 0.15 || 
+        (x - sensorValueScan[j-2][2]) > 0.15 || 
+        (avgDistance - x) > 0.3){
+          blockBearings.push_back(x);
+        }
+      }
+      return blockBearings;
+}
+
+      
+double get_bearing_in_degrees() {
+    const double *north = compass->getValues();
     double rad = atan2(north[0], north[2]);
     double bearing = (rad - 1.5708) / M_PI * 180.0;
     if (bearing < 0.0){
@@ -119,27 +178,71 @@ double get_bearing_in_degrees(const double *north) {
     return bearing;
 }
 
-/*void rotate_theta(const double *north, double theta) { //function to be used in scan_on_spot
-  
-  double initial_bearing = get_bearing_in_degrees(north);
-  double angle_rotated = 0.0;
-  
-  while (angle_rotated < theta) {
-    rotate_CW();
-    angle_rotated++;
-    double bearing = get_bearing_in_degrees(north);
-    std::cout << bearing;
+//Function to rotate by a fixed angle
+void rotate_theta(double theta, double initial_bearing) { 
+    double angle_rotated = 0.0;
+    // set the target position, velocity of the motors
+    leftMotor->setPosition(INFINITY);
+    rightMotor->setPosition(INFINITY);
+    leftMotor->setVelocity(0.5 * MAX_SPEED);
+    rightMotor->setVelocity(-0.5 * MAX_SPEED);
     
-    if ((bearing - initial_bearing) >= 0.0) {
-      angle_rotated = bearing - initial_bearing;
+    while (robot->step(TIME_STEP) != -1){
+        double bearing = get_bearing_in_degrees();
+        if ((bearing - initial_bearing) >= 0.0) {
+        angle_rotated = bearing - initial_bearing;
     }
+    
     if ((bearing - initial_bearing) < 0.0) {
-      angle_rotated = bearing + 360.0 - initial_bearing;
-    }
+      angle_rotated = bearing + (360.0 - initial_bearing);
+    } 
+    //std::cout << angle_rotated << std::endl;
+    //std::cout << theta << std::endl;
     
+    if (angle_rotated > theta) {
+       leftMotor->setVelocity(0.0 * MAX_SPEED);
+       rightMotor->setVelocity(0.0 * MAX_SPEED);
+       break;
+    }
   } 
 }
-*/
+
+void rotate_until_bearing(double target_bearing, double initial_bearing) {
+    double angle_rotated = 0.0;
+    // set the target position, velocity of the motors
+    leftMotor->setPosition(INFINITY);
+    rightMotor->setPosition(INFINITY);
+    
+    if (target_bearing > initial_bearing) {
+      leftMotor->setVelocity(0.1 * MAX_SPEED);
+      rightMotor->setVelocity(-0.1 * MAX_SPEED);
+      while (robot->step(TIME_STEP) != -1){
+        double bearing = get_bearing_in_degrees();
+        std::cout << bearing << std::endl;
+        if (bearing > target_bearing) {
+          leftMotor->setVelocity(0.0 * MAX_SPEED);
+          rightMotor->setVelocity(0.0 * MAX_SPEED);
+          break;
+        }
+      }
+    }
+    if (target_bearing < initial_bearing) {
+    leftMotor->setVelocity(-0.1 * MAX_SPEED);
+    rightMotor->setVelocity(0.1 * MAX_SPEED);
+    while (robot->step(TIME_STEP) != -1){
+      Compass *compass = robot->getCompass("compass");
+      compass->enable(TIME_STEP);
+      const double *north = compass->getValues();
+      double bearing = get_bearing_in_degrees();
+      std::cout << bearing << std::endl;
+      if (bearing < target_bearing) {
+        leftMotor->setVelocity(0.0 * MAX_SPEED);
+        rightMotor->setVelocity(0.0 * MAX_SPEED);
+        break;
+        }
+      }
+    }
+}
 
 std::vector<double> findBlocks(std::vector<double> &dsValueScan);
    
@@ -150,34 +253,66 @@ int main(int argc, char **argv) {
     compass->enable(TIME_STEP);
   
     //Retrieving device tags and enabling with refresh time step
-    for(int i = 0; i < 4; i++){
+    for(int i = 0; i < 3; i++){
       ds[i] = robot->getDistanceSensor(dsNames[i]);
       ds[i]->enable(TIME_STEP); //TIME_STEP defines rate at which sensor is refreshed
     }
     
-   int j = 0;
+   int i = 0;
    
    while (robot->step(TIME_STEP) != -1){
-   
-      /*double initial_bearing = get_bearing_in_degrees(north);
-      rotate(18.2);
-      double final_bearing = get_bearing_in_degrees(north);*/
       
-      std::vector<double> Values = getdsValues();
-      dsValueScan.push_back(Values);
+      std::vector<double> Values = getSensorValues(get_bearing_in_degrees);
+      sensorValueScan.push_back(Values);
       rotate_ACW();
       
-      for(int i = 0; i<4; i++){
-        std::cout << dsValueScan[j][i]<< ",";
+      int lookUpTableSize = ds[2]->getLookupTableSize();
+      
+      for(int j = 0; j<4; j++){
+        std::cout << sensorValueScan[i][j]<< ",";
       }
        
       std::cout << "\n";
       
-      j++;
+      if(i==30){
+        int numCounter = 0;
+        double sumDistance = 0;
+        for(int j = 0; j<lookUpTableSize;j++){
+          sumDistance += sensorValueScan[j][2];
+          if(sensorValueScan[j][2]!=0){
+            numCounter++;
+          }
+        }
+        double avgDistance = sumDistance/numCounter;
+        std::cout << "DISTANCE AVERAGE:" << avgDistance;
+      }
       
-      if(j==100){
+      i++;
+      
+      if(i==999){
         break;
        }
+       
+/*=============================================================
+CODE SNIPPET FOR OUTPUTTING LOOKUP TABLE VALUES
+===============================================================
+*/
+       /*if(i==0){
+         const double *lookUpTable = ds[2]->getLookupTable();
+         int lookUpTableSize = ds[2]->getLookupTableSize();
+         for(int j=0; j<lookUpTableSize;j++){
+           for(int k=0; k<3;k++){
+             std::cout << lookUpTable[3*j+k] << ",";
+           }
+           std::cout << "\n";
+          }
+         i++;
+       }*/
+
+/*========================================================
+CODE SNIPPET FOR OUTPUTTING GPS AND COMPASS VALUES
+==========================================================
+*/
      
       /*std::cout << initial_bearing << "," << final_bearing << "\n";
       
@@ -202,3 +337,4 @@ int main(int argc, char **argv) {
    delete robot;
    return 0;
  }
+ 
