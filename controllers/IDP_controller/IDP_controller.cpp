@@ -133,6 +133,47 @@ void rotate_theta(double theta, double initial_bearing) { //function to be used 
 return;
 }
 
+void rotate_until_bearing(double target_bearing, double initial_bearing) {
+  double angle_rotated = 0.0;
+  // set the target position, velocity of the motors
+  leftMotor->setPosition(INFINITY);
+  rightMotor->setPosition(INFINITY);
+  
+  if (target_bearing > initial_bearing) {
+    leftMotor->setVelocity(0.1 * MAX_SPEED);
+    rightMotor->setVelocity(-0.1 * MAX_SPEED);
+    while (robot->step(TIME_STEP) != -1){
+      Compass *compass = robot->getCompass("compass");
+      compass->enable(TIME_STEP);
+      const double *north = compass->getValues();
+      double bearing = get_bearing_in_degrees(north);
+      std::cout << bearing << std::endl;
+      if (bearing > target_bearing) {
+        leftMotor->setVelocity(0.0 * MAX_SPEED);
+        rightMotor->setVelocity(0.0 * MAX_SPEED);
+        break;
+      }
+    }
+  }
+    if (target_bearing < initial_bearing) {
+    leftMotor->setVelocity(-0.1 * MAX_SPEED);
+    rightMotor->setVelocity(0.1 * MAX_SPEED);
+    while (robot->step(TIME_STEP) != -1){
+      Compass *compass = robot->getCompass("compass");
+      compass->enable(TIME_STEP);
+      const double *north = compass->getValues();
+      double bearing = get_bearing_in_degrees(north);
+      std::cout << bearing << std::endl;
+      if (bearing < target_bearing) {
+        leftMotor->setVelocity(0.0 * MAX_SPEED);
+        rightMotor->setVelocity(0.0 * MAX_SPEED);
+        break;
+      }
+    }
+    }
+return;
+}
+
 int main(int argc, char **argv) {
   
 //Initialising GPS
@@ -168,7 +209,8 @@ compass->enable(TIME_STEP);
     //std::cout <<  north[0] << ", "<< north[1] << ", "<< north[2] << std::endl;
     double initial_bearing = get_bearing_in_degrees(north);
     std::cout << initial_position[0] <<',' << initial_position[1] << ',' << initial_position[2] << std::endl;
-    rotate_theta(185.0, initial_bearing);
+    //rotate_theta(185.0, initial_bearing);
+    rotate_until_bearing(1.0, initial_bearing); // input target bearing and current bearing
    }
   
     // Main (algorithmic loop)
