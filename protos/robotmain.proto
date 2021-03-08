@@ -1,5 +1,5 @@
 PROTO robotmain [	
-  field SFVec3f    translation  0 0.02 0	
+  field SFVec3f    translation  0 0 0	
   field SFRotation rotation     0 1 0 0	
   field SFFloat    bodyMass     3	
 ]	
@@ -19,7 +19,7 @@ Robot {
       name "compass"
     }
     SharpGP2Y0A02YK0F {
-      translation 1.37043e-16 -0.03 0.12
+      translation 0 0 0.12
       rotation -0.5773502691896258 0.5773502691896258 -0.5773502691896258 -2.094395307179586
       name "ir"
     }
@@ -370,7 +370,7 @@ Robot {
           boundingObject USE TEPT4400	
         }	
       ]	
-      name "TEPT4400"	
+      name "lightsensor"	
       lookupTable [	
         0 0 0	
         0.037 0.02 0.1	

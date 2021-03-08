@@ -4,7 +4,7 @@
 #include <webots/DistanceSensor.hpp>
 #include <webots/GPS.hpp>
 #include <webots/Compass.hpp>
-#include <math.h>
+#include <webots/Emitter.hpp>
 
 #define TIME_STEP 32
 #define MAX_SPEED 10
@@ -22,14 +22,13 @@ Motor *leftArmMotor = robot->getMotor("Arm_L");
 Motor *rightArmMotor = robot->getMotor("Arm_R");
 GPS *gps = robot->getGPS("gps");
 Compass *compass = robot->getCompass("compass");
+/*LightSensor *lightSensor = robot->getLightSensor("lightsensor");
+lightSensor->enable(TIME_STEP);
+*/
 
 //Initialsing US and IR sensors
 DistanceSensor *ds[3];
 char dsNames[3][20] = {"us_right","us_left","ir"};
-  
-/*LightSensor *light_sensor = robot->getLightSensor("TEPT4400");
-light_sensor->enable(TIME_STEP);
-*/
 
 //Initiate vector to store sensor readings
 std::vector<std::vector<double>> sensorValueScan;
@@ -136,14 +135,12 @@ std::vector<double> getSensorValues(double (*get_bearing_in_degrees)()){
     sensorValues[3] = bearing;
     return sensorValues;
 }
-
-//Clean sensorValueScan to get block bearings
 std::vector<double> getBlockBearings(){
 
-      int lookUpTableSize = ds[2]->getLookupTableSize();
       std::vector<double> blockBearings;
       
       //Calculating average returned IR sensor value
+      int lookUpTableSize = ds[2]->getLookupTableSize();
       int numCounter = 0;
       double sumDistance = 0;
       for(int j = 0; j<lookUpTableSize;j++){
@@ -154,17 +151,73 @@ std::vector<double> getBlockBearings(){
       }
       double avgDistance = sumDistance/numCounter;
       
-      double x;
-      //Conditional logic to extract bearings
+      
+      //Alpha is a shortcode for the distance value on the jth row, 2nd column of sensorValueScam
+      double alpha;
+      //Conditional logic to extract bearings and then convert to GPS location
       for(int j = 2; j<lookUpTableSize;j++){
-        x = sensorValueScan[j][2];
-        if( (x - sensorValueScan[j-1][2]) > 0.15 || 
-        (x - sensorValueScan[j-2][2]) > 0.15 || 
-        (avgDistance - x) > 0.3){
-          blockBearings.push_back(x);
+        alpha = sensorValueScan[j][2];
+        /*Conditions for blocks to be picked out:
+        1. Large jump between previous value
+        2. Large jump between value two time steps previously
+        3. Large difference between distance value recorded and average distance value
+        calculated above
+        */
+        if( (alpha - sensorValueScan[j-1][2]) > 0.15 || 
+        (alpha - sensorValueScan[j-2][2]) > 0.15 || 
+        (avgDistance - alpha) > 0.3){
+          blockBearings.push_back(sensorValueScan[j][3]);
         }
       }
+      
       return blockBearings;
+}
+//Clean sensorValueScan to get block bearings
+std::vector<std::vector<double>> getBlockGPS(){
+
+      std::vector<double> blockBearings;
+      std::vector<double> blockDistances;
+      std::vector<std::vector<double>> blockGPS;
+      
+      //Calculating average returned IR sensor value
+      int lookUpTableSize = ds[2]->getLookupTableSize();
+      int numCounter = 0;
+      double sumDistance = 0;
+      for(int j = 0; j<lookUpTableSize;j++){
+        sumDistance += sensorValueScan[j][2];
+        if(sensorValueScan[j][2]!=0){
+          numCounter++;
+        }
+      }
+      double avgDistance = sumDistance/numCounter;
+      
+      //Alpha is a shortcode for the distance value on the jth row, 2nd column of sensorValueScam
+      double alpha;
+      //Conditional logic to extract bearings and then convert to GPS location
+      for(int j = 2; j<lookUpTableSize;j++){
+        alpha = sensorValueScan[j][2];
+        /*Conditions for blocks to be picked out:
+        1. Large jump between previous value
+        2. Large jump between value two time steps previously
+        3. Large difference between distance value recorded and average distance value
+        calculated above
+        */
+        if( (alpha - sensorValueScan[j-1][2]) > 0.15 || 
+        (alpha - sensorValueScan[j-2][2]) > 0.15 || 
+        (avgDistance - alpha) > 0.3){
+          blockBearings.push_back(sensorValueScan[j][3]);
+          blockDistances.push_back(alpha);
+        }
+      }
+      
+      //Turning bearings and distances into new GPS readings
+      const double *position = gps->getValues();
+      for (auto i : blockBearings){
+        blockGPS[i][0] = position[0]+(blockDistances[i]+0.12)*cos(blockBearings[i]*M_PI/180);
+        blockGPS[i][1] = position[1];
+        blockGPS[i][2] = position[2]+(blockDistances[i]+0.12)*sin(blockBearings[i]*M_PI/180);
+      }
+      return blockGPS;
 }
 
       
@@ -179,7 +232,8 @@ double get_bearing_in_degrees() {
 }
 
 //Function to rotate by a fixed angle
-void rotate_theta(double theta, double initial_bearing) { 
+void rotate_theta(double theta, double initial_bearing, bool &fin) { 
+
     double angle_rotated = 0.0;
     // set the target position, velocity of the motors
     leftMotor->setPosition(INFINITY);
@@ -202,6 +256,7 @@ void rotate_theta(double theta, double initial_bearing) {
     if (angle_rotated > theta) {
        leftMotor->setVelocity(0.0 * MAX_SPEED);
        rightMotor->setVelocity(0.0 * MAX_SPEED);
+       fin = true;
        break;
     }
   } 
@@ -218,7 +273,7 @@ void rotate_until_bearing(double target_bearing, double initial_bearing) {
       rightMotor->setVelocity(-0.1 * MAX_SPEED);
       while (robot->step(TIME_STEP) != -1){
         double bearing = get_bearing_in_degrees();
-        std::cout << bearing << std::endl;
+        //std::cout << bearing << std::endl;
         if (bearing > target_bearing) {
           leftMotor->setVelocity(0.0 * MAX_SPEED);
           rightMotor->setVelocity(0.0 * MAX_SPEED);
@@ -226,15 +281,13 @@ void rotate_until_bearing(double target_bearing, double initial_bearing) {
         }
       }
     }
+    
     if (target_bearing < initial_bearing) {
     leftMotor->setVelocity(-0.1 * MAX_SPEED);
     rightMotor->setVelocity(0.1 * MAX_SPEED);
     while (robot->step(TIME_STEP) != -1){
-      Compass *compass = robot->getCompass("compass");
-      compass->enable(TIME_STEP);
-      const double *north = compass->getValues();
       double bearing = get_bearing_in_degrees();
-      std::cout << bearing << std::endl;
+      //std::cout << bearing << std::endl;
       if (bearing < target_bearing) {
         leftMotor->setVelocity(0.0 * MAX_SPEED);
         rightMotor->setVelocity(0.0 * MAX_SPEED);
@@ -244,7 +297,7 @@ void rotate_until_bearing(double target_bearing, double initial_bearing) {
     }
 }
 
-std::vector<double> findBlocks(std::vector<double> &dsValueScan);
+//std::vector<double> findBlocks(std::vector<double> &dsValueScan);
    
 int main(int argc, char **argv) {
     
@@ -260,21 +313,64 @@ int main(int argc, char **argv) {
     
    int i = 0;
    
+   //fin 1 tells you if the bot has finished turning
+   //It is set to 1 inside 'rotate_theta'
+   //Reset this whenever you are ready to start scanning again
+   bool fin1 = false;
+   
+   //fin2 tells you if the bot has finished the going to a block and picking it up
+   bool fin2 = false;
+   
    while (robot->step(TIME_STEP) != -1){
       
-      std::vector<double> Values = getSensorValues(get_bearing_in_degrees);
-      sensorValueScan.push_back(Values);
-      rotate_ACW();
+      //Initial scan
+      if(fin1==false){
+        std::vector<double> Values = getSensorValues(get_bearing_in_degrees);
+        sensorValueScan.push_back(Values);
+        double currentBearing = get_bearing_in_degrees();
+        rotate_theta(355, currentBearing, fin1);
+       }
       
-      int lookUpTableSize = ds[2]->getLookupTableSize();
+      //Collecting one block
+      if(fin1==true && fin2==false){
+        std::vector<double> blockBearings = getBlockBearings();
+        rotate_until_bearing(blockBearings[0],get_bearing_in_degrees());
+        open_arms();
+        std::vector<std::vector<double>> blockGPS = getBlockGPS();
+        
+        do{
+          const double *currentLocation = gps->getValues();
+          double delta_x = fabs(blockGPS[0][0]-currentLocation[0]);
+          double delta_z = fabs(blockGPS[0][2]-currentLocation[2]);
+          double distance = sqrt(delta_x*delta_x + delta_z*delta_z);
+          
+          leftMotor->setPosition(INFINITY);
+          rightMotor->setPosition(INFINITY);
+          leftMotor->setVelocity(0.5 * MAX_SPEED);
+          rightMotor->setVelocity(0.5 * MAX_SPEED);
+          
+          if(distance < 0.15){
+            leftMotor->setVelocity(0);
+            rightMotor->setVelocity(0);
+          }
+        }while(robot->step(TIME_STEP) != -1);
+        
+        //bool blockColour = readColour();
+        //Some code here to store colour
+        close_arms();
+        fin2 = 1;
+       }
       
+      //Outputting sensorValueScan 
       for(int j = 0; j<4; j++){
         std::cout << sensorValueScan[i][j]<< ",";
       }
        
       std::cout << "\n";
       
-      if(i==30){
+      //Output average distance
+      /*int lookUpTableSize = ds[2]->getLookupTableSize();
+        if(i==30){
         int numCounter = 0;
         double sumDistance = 0;
         for(int j = 0; j<lookUpTableSize;j++){
@@ -285,7 +381,7 @@ int main(int argc, char **argv) {
         }
         double avgDistance = sumDistance/numCounter;
         std::cout << "DISTANCE AVERAGE:" << avgDistance;
-      }
+      }*/
       
       i++;
       
