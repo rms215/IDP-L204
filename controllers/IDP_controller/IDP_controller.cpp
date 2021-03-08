@@ -103,51 +103,33 @@ double get_bearing_in_degrees(const double *north) {
   return bearing;
 }
 
-void rotate_theta(double theta) { //function to be used in scan_on_spot
-    const double *north = compass->getValues();
-  double initial_bearing = 0.0;
-  int i = 0; //counter
-  while (i == 0) {
-    initial_bearing = get_bearing_in_degrees(north);
-          std::cout << initial_bearing << std::endl;
-    i += 1;
-  }
- /* if (i == 0){ //reccord initial bearing
-    initial_bearing = get_bearing_in_degrees(north);
-    }*/
-  //double target_bearing = std::fmod((initial_bearing + theta), 360.0);
-  double bearing = get_bearing_in_degrees(north);
-  //double target_bearing_lb = std::fmod((target_bearing - 10), 360.0);
-  //double target_bearing_ub = std::fmod((target_bearing + 10), 360.0);
+void rotate_theta(double theta, double initial_bearing) { //function to be used in scan_on_spot
   double angle_rotated = 0.0;
-  //rotate_CW();
-  // set the target position of the motors
+  // set the target position, velocity of the motors
   leftMotor->setPosition(INFINITY);
   rightMotor->setPosition(INFINITY);
-
-   // set up the motor speeds at 50% of the MAX_SPEED.
-   leftMotor->setVelocity(0.5 * MAX_SPEED);
-   rightMotor->setVelocity(-0.5 * MAX_SPEED);
- 
+  leftMotor->setVelocity(0.5 * MAX_SPEED);
+  rightMotor->setVelocity(-0.5 * MAX_SPEED);
+  while (robot->step(TIME_STEP) != -1){
+  Compass *compass = robot->getCompass("compass");
+  compass->enable(TIME_STEP);
+  const double *north = compass->getValues();
+  double bearing = get_bearing_in_degrees(north);
       if ((bearing - initial_bearing) >= 0.0) {
       angle_rotated = bearing - initial_bearing;
     }
     if ((bearing - initial_bearing) < 0.0) {
       angle_rotated = bearing + (360.0 - initial_bearing);
       } 
-      bearing = get_bearing_in_degrees(north);
-
-     
-  //while (angle_rotated < theta) {
-
-    // }
-    
- //i+=1; 
-    
-  if (angle_rotated >= theta) {
-   leftMotor->setVelocity(0.0 * MAX_SPEED);
-   rightMotor->setVelocity(0.0 * MAX_SPEED);
-}
+     std::cout << angle_rotated << std::endl;
+     std::cout << theta << std::endl;
+    if (angle_rotated > theta) {
+       leftMotor->setVelocity(0.0 * MAX_SPEED);
+       rightMotor->setVelocity(0.0 * MAX_SPEED);
+       break;
+    }
+ } 
+   
 return;
 }
 
@@ -163,7 +145,7 @@ compass->enable(TIME_STEP);
 
   // position and orientation pointers
   const double *position = gps->getValues();
-  const double *north = compass->getValues();
+  //const double *north = compass->getValues();
 
 //Retrieving device tags and enabling with refresh time step
   for(int i = 0; i < 4; i++){
@@ -172,30 +154,32 @@ compass->enable(TIME_STEP);
   }
   
   
-  double initial_position[3] = {0.0, 1.0, 2.0}; //initiate initial position
+  double initial_position[3] = {0.0, 0.0, 0.0}; //initiate initial position
   int i = 0; //initiate time step counter
-      rotate_theta(90.0);
- //while (robot->step(TIME_STEP) != -1){
+     
+ while (robot->step(TIME_STEP) != -1){
 
-    if (i == 0){
+  //double initial_bearing = 0.0;
+  if (i == 0){
+    const double *north = compass->getValues();
     initial_position[0] = gps->getValues()[0];
     initial_position[1] = gps->getValues()[1];
     initial_position[2] = gps->getValues()[2];
-   //const double initial_north = compass->getValues();
-  };
+    //std::cout <<  north[0] << ", "<< north[1] << ", "<< north[2] << std::endl;
+    double initial_bearing = get_bearing_in_degrees(north);
+    std::cout << initial_position[0] <<',' << initial_position[1] << ',' << initial_position[2] << std::endl;
+    rotate_theta(185.0, initial_bearing);
+   }
   
     // Main (algorithmic loop)
-
-    //rotate_CW();
-    double bearing = get_bearing_in_degrees(north);
     //std::cout << bearing << std::endl;
     //std::cout <<  position[0] << ", "<< position[1] << ", "<< position[2] << std::endl;
     //std::cout <<  north[0] << ", "<< north[1] << ", "<< north[2] << std::endl;
     //std::cout <<  initial_position[0] << ", "<< initial_position[1] << ", "<< initial_position[2] << std::endl;
     //std::cout << i << std::endl;
     
-    i+=1;
- //}
+   i+=1;
+ }
     
  delete robot;
  return 0;
