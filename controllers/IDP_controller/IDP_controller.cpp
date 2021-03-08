@@ -32,7 +32,7 @@ light_sensor->enable(TIME_STEP);
 */
 
 //Initiate vector to store sensor readings
-std::vector<std::vector<double>> dsValueScan(1000,std::vector<double> (4,0));
+std::vector<std::vector<double>> dsValueScan;
 
 void rotate(double theta){
 
@@ -105,7 +105,7 @@ void close_arms() {
 std::vector<double> getdsValues(){
     std::vector<double> dsValues(4);
     for (int i = 0; i < 4; i++){
-      dsValues[i] = ds[i]->getValue();
+      dsValues[i]=ds[i]->getValue();
     }
     return dsValues;
 }
@@ -164,14 +164,16 @@ int main(int argc, char **argv) {
       double final_bearing = get_bearing_in_degrees(north);*/
       
       std::vector<double> Values = getdsValues();
-      j++;
+      dsValueScan.push_back(Values);
       rotate_ACW();
       
       for(int i = 0; i<4; i++){
-        std::cout << Values[i]<< ",";
-       }
+        std::cout << dsValueScan[j][i]<< ",";
+      }
        
       std::cout << "\n";
+      
+      j++;
       
       if(j==100){
         break;
